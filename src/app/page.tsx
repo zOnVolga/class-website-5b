@@ -1,0 +1,960 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Calendar } from '@/components/ui/calendar';
+import { CalendarIcon, MessageSquare, BookOpen, FileText, Images, Book, Trophy, User, ChevronLeft, ChevronRight, Phone, Mail, Calculator, Users } from 'lucide-react';
+
+interface Event {
+  title: string;
+  type: 'school' | 'birthday' | 'deadline';
+  date: string;
+}
+
+interface NewsItem {
+  id: number;
+  title: string;
+  content: string;
+  date: string;
+}
+
+interface FileItem {
+  id: number;
+  name: string;
+  type: 'pdf' | 'docx' | 'zip' | 'xlsx';
+  size: string;
+}
+
+interface Achievement {
+  id: number;
+  title: string;
+  description: string;
+  date: string;
+}
+
+interface Contact {
+  id: number;
+  type: 'teacher' | 'student';
+  fullName: string;
+  phone: string;
+  birthDate: string;
+  photo?: string;
+  role?: string;
+}
+
+export default function ClassWebsite() {
+  const [activeTab, setActiveTab] = useState('news');
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authMethod, setAuthMethod] = useState<'phone' | 'email'>('phone');
+  const [phone, setPhone] = useState('+7 ');
+  const [email, setEmail] = useState('');
+  const [messages, setMessages] = useState<{ [key: string]: Array<{ text: string; sent: boolean }> }>({
+    teacher: [
+      { text: 'Привет! Как дела?', sent: false },
+      { text: 'Все хорошо, спасибо!', sent: true },
+    ],
+    students: [
+      { text: 'Кто сделал домашку по математике?', sent: false },
+      { text: 'Я уже сдала!', sent: true },
+    ],
+  });
+  const [currentDate, setCurrentDate] = useState(new Date(2024, 0, 1));
+  const [calendarView, setCalendarView] = useState<'month' | 'week' | 'year'>('year');
+
+  // Mock data
+  const events: Event[] = [
+    { title: 'Экскурсия в музей', type: 'school', date: '2024-01-05' },
+    { title: 'Олимпиада по математике', type: 'school', date: '2024-01-10' },
+    { title: 'Родительское собрание', type: 'school', date: '2024-01-15' },
+    { title: 'Родительское собрание', type: 'school', date: '2024-01-20' },
+    { title: 'День рождения Сидорова А.', type: 'birthday', date: '2024-01-28' },
+    { title: 'Срок сдачи проекта', type: 'deadline', date: '2024-01-31' },
+  ];
+
+  const newsItems: NewsItem[] = [
+    {
+      id: 1,
+      title: 'Родительское собрание',
+      content: 'Собрание состоится 20 января в 18:00 в кабинете 215. Обсудим итоги полугодия и планы на второе полугодие.',
+      date: '15 января 2024',
+    },
+    {
+      id: 2,
+      title: 'Олимпиада по математике',
+      content: 'Поздравляем победителей школьной олимпиады! Иванов Иван занял 1 место, Петрова Мария - 2 место.',
+      date: '10 января 2024',
+    },
+    {
+      id: 3,
+      title: 'Экскурсия в музей',
+      content: 'Список участников и сбор в 9:00 у школы. Не забудьте взять с собой бутерброды и воду!',
+      date: '5 января 2024',
+    },
+  ];
+
+  const knowledgeItems = [
+    { id: 1, title: 'Математика', icon: Calculator, count: 12 },
+    { id: 2, title: 'Русский язык', icon: FileText, count: 8 },
+    { id: 3, title: 'Литература', icon: BookOpen, count: 15 },
+    { id: 4, title: 'История', icon: Book, count: 10 },
+  ];
+
+  const fileItems: FileItem[] = [
+    { id: 1, name: 'Расписание.pdf', type: 'pdf', size: '245 KB' },
+    { id: 2, name: 'Методичка_математика.docx', type: 'docx', size: '1.2 MB' },
+    { id: 3, name: 'Фото_экскурсии.zip', type: 'zip', size: '15.4 MB' },
+    { id: 4, name: 'Список_участников.xlsx', type: 'xlsx', size: '89 KB' },
+  ];
+
+  const galleryItems = [
+    'Экскурсия в музей',
+    'Новогодний праздник',
+    'Учебный проект',
+    'Спортивные соревнования',
+    'Классный час',
+    'Выставка работ',
+  ];
+
+  const achievements: Achievement[] = [
+    {
+      id: 1,
+      title: 'Олимпиада по математике',
+      description: '2 место в районе',
+      date: 'Январь 2024',
+    },
+    {
+      id: 2,
+      title: 'Спортивные соревнования',
+      description: 'Победители в эстафете',
+      date: 'Декабрь 2023',
+    },
+  ];
+
+  const contacts: Contact[] = [
+    {
+      id: 1,
+      type: 'teacher',
+      fullName: 'Петрова Елена Ивановна',
+      phone: '+7 (912) 345-67-89',
+      birthDate: '15.03.1985',
+      role: 'Классный руководитель',
+    },
+    {
+      id: 2,
+      type: 'student',
+      fullName: 'Иванов Иван Алексеевич',
+      phone: '+7 (912) 234-56-78',
+      birthDate: '12.05.2013',
+    },
+    {
+      id: 3,
+      type: 'student',
+      fullName: 'Петрова Мария Сергеевна',
+      phone: '+7 (912) 345-67-89',
+      birthDate: '28.01.2013',
+    },
+    {
+      id: 4,
+      type: 'student',
+      fullName: 'Сидоров Артем Дмитриевич',
+      phone: '+7 (912) 456-78-90',
+      birthDate: '15.07.2013',
+    },
+    {
+      id: 5,
+      type: 'student',
+      fullName: 'Козлова Анна Владимировна',
+      phone: '+7 (912) 567-89-01',
+      birthDate: '03.09.2013',
+    },
+    {
+      id: 6,
+      type: 'student',
+      fullName: 'Смирнов Максим Игоревич',
+      phone: '+7 (912) 678-90-12',
+      birthDate: '22.11.2013',
+    },
+  ];
+
+  const getEventsForDate = (date: Date) => {
+    const dateString = date.toISOString().split('T')[0];
+    return events.filter(event => event.date === dateString);
+  };
+
+  const formatPhone = (value: string) => {
+    let digits = value.replace(/\D/g, '');
+    if (digits.startsWith('8')) digits = '7' + digits.substring(1);
+    if (!digits.startsWith('7')) digits = '7' + digits;
+    
+    let formatted = '+7 ';
+    if (digits.length > 1) formatted += digits.substring(1, 4);
+    if (digits.length > 4) formatted += ' ' + digits.substring(4, 7);
+    if (digits.length > 7) formatted += '-' + digits.substring(7, 9);
+    if (digits.length > 9) formatted += '-' + digits.substring(9, 11);
+    
+    return formatted.substring(0, 18);
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPhone(formatPhone(e.target.value));
+  };
+
+  const sendMessage = (chatType: string, text: string) => {
+    if (text.trim()) {
+      setMessages(prev => ({
+        ...prev,
+        [chatType]: [...(prev[chatType] || []), { text, sent: true }],
+      }));
+    }
+  };
+
+  const getEventColor = (type: string) => {
+    switch (type) {
+      case 'birthday': return 'bg-pink-500';
+      case 'deadline': return 'bg-red-500';
+      default: return 'bg-amber-500';
+    }
+  };
+
+  const renderMiniCalendar = () => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startDay = firstDay.getDay() || 7;
+    
+    const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+                       'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+    
+    const today = new Date();
+    
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">{monthNames[month]} {year}</CardTitle>
+            <div className="flex gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setCurrentDate(new Date(year, month - 1, 1))}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setCurrentDate(new Date(year, month + 1, 1))}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-muted-foreground mb-2">
+            {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map(day => (
+              <div key={day}>{day}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {Array.from({ length: startDay - 1 }).map((_, i) => (
+              <div key={`empty-${i}`} className="aspect-square" />
+            ))}
+            {Array.from({ length: daysInMonth }).map((_, i) => {
+              const day = i + 1;
+              const date = new Date(year, month, day);
+              const dayEvents = getEventsForDate(date);
+              const isToday = date.toDateString() === today.toDateString();
+              
+              return (
+                <button
+                  key={day}
+                  onClick={() => {
+                    setActiveTab('calendar');
+                    setCalendarView('month');
+                  }}
+                  className={`
+                    aspect-square rounded-md text-sm font-medium transition-all
+                    ${isToday ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}
+                    ${dayEvents.length > 0 && !isToday ? getEventColor(dayEvents[0].type) + ' text-white' : ''}
+                  `}
+                >
+                  {day}
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center gap-2 text-sm">
+              <div className="w-3 h-3 rounded bg-amber-500" />
+              <span>Мероприятия</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <div className="w-3 h-3 rounded bg-pink-500" />
+              <span>Дни рождения</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <div className="w-3 h-3 rounded bg-red-500" />
+              <span>Дедлайны</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderFullCalendar = () => {
+    if (calendarView === 'year') {
+      return renderYearCalendar();
+    } else if (calendarView === 'month') {
+      return renderMonthCalendar();
+    } else {
+      return renderWeekCalendar();
+    }
+  };
+
+  const renderYearCalendar = () => {
+    const year = currentDate.getFullYear();
+    const monthNames = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн',
+                       'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+    
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {Array.from({ length: 12 }).map((_, monthIndex) => {
+          const firstDay = new Date(year, monthIndex, 1);
+          const lastDay = new Date(year, monthIndex + 1, 0);
+          const daysInMonth = lastDay.getDate();
+          const startDay = firstDay.getDay() || 7;
+          
+          const today = new Date();
+          
+          return (
+            <Card key={monthIndex} className="p-3">
+              <h3 className="font-semibold text-center mb-2">{monthNames[monthIndex]}</h3>
+              <div className="grid grid-cols-7 gap-1 text-xs">
+                {Array.from({ length: startDay - 1 }).map((_, i) => (
+                  <div key={`empty-${i}`} />
+                ))}
+                {Array.from({ length: daysInMonth }).map((_, dayIndex) => {
+                  const day = dayIndex + 1;
+                  const date = new Date(year, monthIndex, day);
+                  const dayEvents = getEventsForDate(date);
+                  const isToday = date.toDateString() === today.toDateString();
+                  
+                  return (
+                    <button
+                      key={day}
+                      className={`
+                        aspect-square rounded text-xs transition-all
+                        ${isToday ? 'bg-primary text-primary-foreground font-bold' : 'hover:bg-muted'}
+                        ${dayEvents.length > 0 && !isToday ? getEventColor(dayEvents[0].type) + ' text-white' : ''}
+                      `}
+                    >
+                      {day}
+                    </button>
+                  );
+                })}
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderMonthCalendar = () => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startDay = firstDay.getDay() || 7;
+    
+    const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+                       'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+    
+    const today = new Date();
+    
+    return (
+      <div className="grid grid-cols-7 gap-1">
+        {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map(day => (
+          <div key={day} className="p-2 text-center font-semibold text-muted-foreground bg-muted rounded">
+            {day}
+          </div>
+        ))}
+        {Array.from({ length: startDay - 1 }).map((_, i) => (
+          <div key={`empty-${i}`} className="min-h-[100px] p-2 border rounded" />
+        ))}
+        {Array.from({ length: daysInMonth }).map((_, i) => {
+          const day = i + 1;
+          const date = new Date(year, month, day);
+          const dayEvents = getEventsForDate(date);
+          const isToday = date.toDateString() === today.toDateString();
+          
+          return (
+            <div
+              key={day}
+              className={`
+                min-h-[100px] p-2 border rounded transition-all
+                ${isToday ? 'bg-primary/10 border-primary' : 'hover:bg-muted/50'}
+              `}
+            >
+              <div className="font-semibold mb-1">{day}</div>
+              <div className="space-y-1">
+                {dayEvents.map((event, index) => (
+                  <Badge
+                    key={index}
+                    variant="secondary"
+                    className={`text-xs w-full justify-start ${getEventColor(event.type)} text-white`}
+                  >
+                    {event.title}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderWeekCalendar = () => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const day = currentDate.getDate();
+    const currentDayOfWeek = currentDate.getDay() || 7;
+    const weekStart = new Date(year, month, day - currentDayOfWeek + 1);
+    
+    const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+                       'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+    
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-8 gap-1">
+          <div className="p-2" />
+          {weekdays.map((weekday, index) => {
+            const date = new Date(weekStart);
+            date.setDate(weekStart.getDate() + index);
+            const dayEvents = getEventsForDate(date);
+            const isToday = date.toDateString() === new Date().toDateString();
+            
+            return (
+              <div
+                key={weekday}
+                className={`
+                  p-2 text-center rounded border
+                  ${isToday ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted/50'}
+                `}
+              >
+                <div className="font-semibold">{weekday}</div>
+                <div className="text-sm">{date.getDate()} {monthNames[date.getMonth()]}</div>
+              </div>
+            );
+          })}
+        </div>
+        
+        <div className="grid grid-cols-8 gap-1">
+          <div className="space-y-2">
+            {['8:00', '10:00', '12:00', '14:00', '16:00', '18:00'].map(time => (
+              <div key={time} className="p-2 text-sm text-muted-foreground text-center border rounded">
+                {time}
+              </div>
+            ))}
+          </div>
+          
+          {Array.from({ length: 7 }).map((_, dayIndex) => {
+            const date = new Date(weekStart);
+            date.setDate(weekStart.getDate() + dayIndex);
+            const dayEvents = getEventsForDate(date);
+            
+            return (
+              <div key={dayIndex} className="space-y-2">
+                {Array.from({ length: 6 }).map((_, timeIndex) => {
+                  const timeSlotEvents = dayEvents.filter((_, i) => i === timeIndex % dayEvents.length);
+                  
+                  return (
+                    <div
+                      key={timeIndex}
+                      className="min-h-[60px] p-2 border rounded hover:bg-muted/50 transition-colors"
+                    >
+                      {timeSlotEvents.map((event, eventIndex) => (
+                        <Badge
+                          key={eventIndex}
+                          variant="secondary"
+                          className={`text-xs w-full justify-start mb-1 ${getEventColor(event.type)} text-white`}
+                        >
+                          {event.title}
+                        </Badge>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      {/* Header */}
+      <header className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white sticky top-0 z-50 shadow-lg">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-indigo-600 font-bold text-xl">
+                5Б
+              </div>
+              <h1 className="text-xl sm:text-2xl font-bold">Классный сайт 5 "Б"</h1>
+            </div>
+            <Button
+              variant="secondary"
+              className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+              onClick={() => setIsAuthModalOpen(true)}
+            >
+              <User className="mr-2 h-4 w-4" />
+              Войти
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* Navigation */}
+      <nav className="bg-white shadow-sm sticky top-16 z-40">
+        <div className="container mx-auto px-4">
+          <div className="flex overflow-x-auto py-2 gap-1 scrollbar-hide">
+            {[
+              { id: 'news', label: 'Новости', icon: CalendarIcon },
+              { id: 'calendar', label: 'Календарь', icon: CalendarIcon },
+              { id: 'myclass', label: 'Мой класс', icon: Users },
+              { id: 'chats', label: 'Чаты', icon: MessageSquare },
+              { id: 'knowledge', label: 'База знаний', icon: BookOpen },
+              { id: 'files', label: 'Файлы', icon: FileText },
+              { id: 'gallery', label: 'Галерея', icon: Images },
+              { id: 'diary', label: 'Дневник', icon: Book },
+              { id: 'achievements', label: 'Достижения', icon: Trophy },
+            ].map((item) => (
+              <Button
+                key={item.id}
+                variant={activeTab === item.id ? 'default' : 'ghost'}
+                className="flex-shrink-0 flex flex-col items-center gap-1 h-auto py-2 px-3"
+                onClick={() => setActiveTab(item.id)}
+              >
+                <item.icon className="h-4 w-4" />
+                <span className="text-xs">{item.label}</span>
+              </Button>
+            ))}
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-6">
+        <Tabs value={activeTab} className="w-full">
+          {/* News Tab */}
+          <TabsContent value="news" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-4">
+                <h2 className="text-2xl font-bold flex items-center gap-2">
+                  <CalendarIcon className="h-6 w-6 text-indigo-600" />
+                  Новости и события
+                </h2>
+                <div className="space-y-4">
+                  {newsItems.map((news) => (
+                    <Card key={news.id} className="hover:shadow-lg transition-shadow">
+                      <CardHeader>
+                        <div className="flex justify-between items-start">
+                          <CardTitle className="text-lg">{news.title}</CardTitle>
+                          <Badge variant="secondary">{news.date}</Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-muted-foreground">{news.content}</p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+              <div>
+                {renderMiniCalendar()}
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Calendar Tab */}
+          <TabsContent value="calendar" className="space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <h2 className="text-2xl font-bold flex items-center gap-2">
+                <CalendarIcon className="h-6 w-6 text-indigo-600" />
+                Календарь событий
+              </h2>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (calendarView === 'year') {
+                      setCurrentDate(new Date(currentDate.getFullYear() - 1, 0, 1));
+                    } else if (calendarView === 'month') {
+                      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+                    } else {
+                      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - 7));
+                    }
+                  }}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <div className="flex gap-1">
+                  {(['month', 'week', 'year'] as const).map((view) => (
+                    <Button
+                      key={view}
+                      variant={calendarView === view ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setCalendarView(view)}
+                    >
+                      {view === 'month' ? 'Месяц' : view === 'week' ? 'Неделя' : 'Год'}
+                    </Button>
+                  ))}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (calendarView === 'year') {
+                      setCurrentDate(new Date(currentDate.getFullYear() + 1, 0, 1));
+                    } else if (calendarView === 'month') {
+                      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+                    } else {
+                      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + 7));
+                    }
+                  }}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            {renderFullCalendar()}
+          </TabsContent>
+
+          {/* My Class Tab */}
+          <TabsContent value="myclass" className="space-y-6">
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <Users className="h-6 w-6 text-indigo-600" />
+              Мой класс
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {contacts.map((contact) => (
+                <Card key={contact.id} className="hover:shadow-lg transition-all duration-300 overflow-hidden group">
+                  <div className="aspect-square bg-gradient-to-br from-indigo-100 to-purple-100 relative overflow-hidden">
+                    {contact.photo ? (
+                      <img 
+                        src={contact.photo} 
+                        alt={contact.fullName}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-lg">
+                          <User className="h-12 w-12 text-indigo-600" />
+                        </div>
+                      </div>
+                    )}
+                    <div className="absolute top-2 right-2">
+                      <Badge 
+                        variant={contact.type === 'teacher' ? 'default' : 'secondary'}
+                        className={contact.type === 'teacher' ? 'bg-indigo-600' : ''}
+                      >
+                        {contact.type === 'teacher' ? 'Учитель' : 'Ученик'}
+                      </Badge>
+                    </div>
+                  </div>
+                  <CardContent className="p-4">
+                    <div className="space-y-3">
+                      <div>
+                        <h3 className="font-semibold text-lg text-gray-900 group-hover:text-indigo-600 transition-colors">
+                          {contact.fullName}
+                        </h3>
+                        {contact.role && (
+                          <p className="text-sm text-indigo-600 font-medium">{contact.role}</p>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm">
+                          <CalendarIcon className="h-4 w-4 text-gray-500" />
+                          <span className="text-gray-600">ДР: {contact.birthDate}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Phone className="h-4 w-4 text-gray-500" />
+                          <a 
+                            href={`tel:${contact.phone.replace(/\D/g, '')}`}
+                            className="text-indigo-600 hover:text-indigo-800 transition-colors font-medium"
+                          >
+                            {contact.phone}
+                          </a>
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-2 pt-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="flex-1"
+                          onClick={() => {
+                            navigator.clipboard.writeText(contact.phone);
+                          }}
+                        >
+                          Копировать
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+                          onClick={() => {
+                            window.location.href = `tel:${contact.phone.replace(/\D/g, '')}`;
+                          }}
+                        >
+                          Позвонить
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* Chats Tab */}
+          <TabsContent value="chats" className="space-y-6">
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <MessageSquare className="h-6 w-6 text-indigo-600" />
+              Чаты
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {[
+                { id: 'teacher', title: 'Групповой чат с учителем', icon: '👨‍🏫' },
+                { id: 'students', title: 'Чат для учеников', icon: '👥' },
+              ].map((chat) => (
+                <Card key={chat.id} className="h-[500px] flex flex-col">
+                  <CardHeader className="bg-indigo-600 text-white">
+                    <CardTitle className="flex items-center gap-2">
+                      <span>{chat.icon}</span>
+                      {chat.title}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex-1 flex flex-col p-0">
+                    <div className="flex-1 p-4 overflow-y-auto space-y-2 bg-muted/50">
+                      {messages[chat.id]?.map((message, index) => (
+                        <div
+                          key={index}
+                          className={`max-w-[80%] p-3 rounded-2xl ${
+                            message.sent
+                              ? 'ml-auto bg-indigo-100 text-indigo-900 rounded-br-sm'
+                              : 'mr-auto bg-white text-gray-900 rounded-bl-sm'
+                          }`}
+                        >
+                          {message.text}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="p-4 border-t bg-white">
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Напишите сообщение..."
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              sendMessage(chat.id, (e.target as HTMLInputElement).value);
+                              (e.target as HTMLInputElement).value = '';
+                            }
+                          }}
+                        />
+                        <Button
+                          onClick={(e) => {
+                            const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                            sendMessage(chat.id, input.value);
+                            input.value = '';
+                          }}
+                        >
+                          Отправить
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* Knowledge Tab */}
+          <TabsContent value="knowledge" className="space-y-6">
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <BookOpen className="h-6 w-6 text-indigo-600" />
+              База знаний
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {knowledgeItems.map((item) => (
+                <Card key={item.id} className="hover:shadow-lg transition-shadow cursor-pointer">
+                  <CardContent className="p-6 text-center">
+                    <item.icon className="h-12 w-12 text-indigo-600 mx-auto mb-4" />
+                    <h3 className="font-semibold mb-2">{item.title}</h3>
+                    <p className="text-sm text-muted-foreground mb-4">{item.count} учебных материалов</p>
+                    <Button variant="outline" size="sm">
+                      Посмотреть материалы
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* Files Tab */}
+          <TabsContent value="files" className="space-y-6">
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <FileText className="h-6 w-6 text-indigo-600" />
+              Файловое хранилище
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {fileItems.map((file) => (
+                <Card key={file.id} className="hover:shadow-lg transition-shadow">
+                  <CardContent className="p-6 text-center">
+                    <div className="h-12 w-12 bg-indigo-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+                      <span className="text-indigo-600 font-bold text-xs">{file.type.toUpperCase()}</span>
+                    </div>
+                    <h3 className="font-semibold mb-2 text-sm">{file.name}</h3>
+                    <p className="text-sm text-muted-foreground mb-4">{file.size}</p>
+                    <Button variant="outline" size="sm">
+                      Скачать файл
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* Gallery Tab */}
+          <TabsContent value="gallery" className="space-y-6">
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <Images className="h-6 w-6 text-indigo-600" />
+              Галерея
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {galleryItems.map((item, index) => (
+                <Card key={index} className="overflow-hidden hover:shadow-lg transition-shadow">
+                  <div className="aspect-video bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold">
+                    {item}
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* Diary Tab */}
+          <TabsContent value="diary" className="space-y-6">
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <Book className="h-6 w-6 text-indigo-600" />
+              Электронный дневник
+            </h2>
+            <Card className="text-center p-8">
+              <div className="h-16 w-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Book className="h-8 w-8 text-amber-600" />
+              </div>
+              <h3 className="text-xl font-semibold mb-4">Интеграция с SGO</h3>
+              <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
+                В ближайшее время будет реализована интеграция с электронным дневником sgo.volganet.ru 
+                для автоматической синхронизации расписания, оценок и домашних заданий.
+              </p>
+              <Button asChild className="bg-amber-600 hover:bg-amber-700">
+                <a href="https://sgo.volganet.ru" target="_blank" rel="noopener noreferrer">
+                  Перейти в SGO
+                </a>
+              </Button>
+            </Card>
+          </TabsContent>
+
+          {/* Achievements Tab */}
+          <TabsContent value="achievements" className="space-y-6">
+            <h2 className="text-2xl font-bold flex items-center gap-2">
+              <Trophy className="h-6 w-6 text-indigo-600" />
+              Достижения класса
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {achievements.map((achievement) => (
+                <Card key={achievement.id} className="hover:shadow-lg transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="h-12 w-12 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center">
+                        <Trophy className="h-6 w-6 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold mb-2">{achievement.title}</h3>
+                        <p className="text-muted-foreground mb-2">{achievement.description}</p>
+                        <Badge variant="secondary">{achievement.date}</Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </main>
+
+      {/* Auth Modal */}
+      <Dialog open={isAuthModalOpen} onOpenChange={setIsAuthModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Вход в систему</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <Button
+                variant={authMethod === 'phone' ? 'default' : 'outline'}
+                className="flex-1"
+                onClick={() => setAuthMethod('phone')}
+              >
+                <Phone className="mr-2 h-4 w-4" />
+                Телефон
+              </Button>
+              <Button
+                variant={authMethod === 'email' ? 'default' : 'outline'}
+                className="flex-1"
+                onClick={() => setAuthMethod('email')}
+              >
+                <Mail className="mr-2 h-4 w-4" />
+                Email
+              </Button>
+            </div>
+            <div>
+              {authMethod === 'phone' ? (
+                <Input
+                  placeholder="+7 XXX XXX-XX-XX"
+                  value={phone}
+                  onChange={handlePhoneChange}
+                />
+              ) : (
+                <Input
+                  type="email"
+                  placeholder="example@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              )}
+            </div>
+            <Button className="w-full">
+              Получить код
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
