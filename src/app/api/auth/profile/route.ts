@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { db, users } from '@/lib/db';
 import { hashPassword, verifyPassword, validatePhone, validateEmail, isPasswordStrong } from '@/lib/auth';
+import { eq, and, ne } from 'drizzle-orm';
 import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -29,20 +30,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const user = await db.user.findUnique({
-      where: { id: auth.userId },
-      select: {
-        id: true,
-        fullName: true,
-        phone: true,
-        email: true,
-        role: true,
-        isActive: true,
-        isVerified: true,
-        createdAt: true,
-        lastLoginAt: true,
-      },
-    });
+    const userResult = await db.select({
+      id: users.id,
+      fullName: users.fullName,
+      phone: users.phone,
+      email: users.email,
+      role: users.role,
+      isActive: users.isActive,
+      isVerified: users.isVerified,
+      createdAt: users.createdAt,
+      lastLoginAt: users.lastLoginAt,
+    }).from(users).where(eq(users.id, auth.userId)).limit(1);
+
+    const user = userResult[0];
 
     if (!user) {
       return NextResponse.json(
@@ -73,9 +73,8 @@ export async function PUT(request: NextRequest) {
 
     const { fullName, phone, email, currentPassword, newPassword } = await request.json();
 
-    const user = await db.user.findUnique({
-      where: { id: auth.userId },
-    });
+    const currentUserResult = await db.select().from(users).where(eq(users.id, auth.userId)).limit(1);
+    const user = currentUserResult[0];
 
     if (!user) {
       return NextResponse.json(
@@ -101,14 +100,14 @@ export async function PUT(request: NextRequest) {
       }
       
       // Проверка, что телефон не занят
-      const existingPhoneUser = await db.user.findFirst({
-        where: {
-          phone: phone.replace(/\D/g, ''),
-          id: { not: auth.userId },
-        },
-      });
+      const existingPhoneUser = await db.select().from(users).where(
+        and(
+          eq(users.phone, phone.replace(/\D/g, '')),
+          ne(users.id, auth.userId)
+        )
+      ).limit(1);
       
-      if (existingPhoneUser) {
+      if (existingPhoneUser.length > 0) {
         return NextResponse.json(
           { error: 'Этот телефон уже используется другим пользователем' },
           { status: 409 }
@@ -129,14 +128,14 @@ export async function PUT(request: NextRequest) {
       }
       
       // Проверка, что email не занят
-      const existingEmailUser = await db.user.findFirst({
-        where: {
-          email,
-          id: { not: auth.userId },
-        },
-      });
+      const existingEmailUser = await db.select().from(users).where(
+        and(
+          eq(users.email, email),
+          ne(users.id, auth.userId)
+        )
+      ).limit(1);
       
-      if (existingEmailUser) {
+      if (existingEmailUser.length > 0) {
         return NextResponse.json(
           { error: 'Этот email уже используется другим пользователем' },
           { status: 409 }
@@ -174,21 +173,19 @@ export async function PUT(request: NextRequest) {
     }
 
     // Обновляем данные пользователя
-    const updatedUser = await db.user.update({
-      where: { id: auth.userId },
-      data: updateData,
-      select: {
-        id: true,
-        fullName: true,
-        phone: true,
-        email: true,
-        role: true,
-        isActive: true,
-        isVerified: true,
-        createdAt: true,
-        lastLoginAt: true,
-      },
+    const updatedUserResult = await db.update(users).set(updateData).where(eq(users.id, auth.userId)).returning({
+      id: users.id,
+      fullName: users.fullName,
+      phone: users.phone,
+      email: users.email,
+      role: users.role,
+      isActive: users.isActive,
+      isVerified: users.isVerified,
+      createdAt: users.createdAt,
+      lastLoginAt: users.lastLoginAt,
     });
+
+    const updatedUser = updatedUserResult[0];
 
     return NextResponse.json({
       message: 'Профиль успешно обновлен',

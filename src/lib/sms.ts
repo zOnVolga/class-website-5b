@@ -1,5 +1,7 @@
+import { config } from 'dotenv';
+
 // Загрузка переменных окружения
-require('dotenv').config();
+config();
 
 export interface SMSResult {
   success: boolean;

@@ -1,7 +1,8 @@
-// Загрузка переменных окружения
-require('dotenv').config();
-
+import { config } from 'dotenv';
 import webPush from 'web-push';
+
+// Загрузка переменных окружения
+config();
 
 // Настройка VAPID ключей
 const vapidKeys = {

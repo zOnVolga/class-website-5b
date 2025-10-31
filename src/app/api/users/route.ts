@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { db, users } from '@/lib/db';
 import { hashPassword, validatePhone, validateEmail, isPasswordStrong } from '@/lib/auth';
-import { UserRole } from '@prisma/client';
+import { eq, or, and, ilike, desc } from 'drizzle-orm';
 import jwt from 'jsonwebtoken';
+import type { UserRole } from '@/lib/db/schema';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -22,7 +23,7 @@ async function checkAuth(request: NextRequest): Promise<{ userId: string; role: 
 }
 
 async function hasPermission(role: UserRole): Promise<boolean> {
-  return [UserRole.ADMIN, UserRole.TEACHER].includes(role);
+  return ['ADMIN', 'TEACHER'].includes(role);
 }
 
 export async function GET(request: NextRequest) {
@@ -38,43 +39,48 @@ export async function GET(request: NextRequest) {
     const { search, role, page = 1, limit = 10 } = new URL(request.url).searchParams;
     const skip = (Number(page) - 1) * Number(limit);
 
-    const where: any = {};
+    let whereConditions = [];
     
     if (search) {
-      where.OR = [
-        { fullName: { contains: search, mode: 'insensitive' } },
-        { phone: { contains: search } },
-        { email: { contains: search, mode: 'insensitive' } },
-      ];
+      whereConditions.push(
+        or(
+          ilike(users.fullName, `%${search}%`),
+          ilike(users.phone, `%${search}%`),
+          ilike(users.email, `%${search}%`)
+        )
+      );
     }
     
-    if (role && Object.values(UserRole).includes(role as UserRole)) {
-      where.role = role;
+    if (role && ['ADMIN', 'TEACHER', 'STUDENT', 'PARENT'].includes(role)) {
+      whereConditions.push(eq(users.role, role as UserRole));
     }
 
-    const [users, total] = await Promise.all([
-      db.user.findMany({
-        where,
-        select: {
-          id: true,
-          fullName: true,
-          phone: true,
-          email: true,
-          role: true,
-          isActive: true,
-          isVerified: true,
-          createdAt: true,
-          lastLoginAt: true,
-        },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: Number(limit),
-      }),
-      db.user.count({ where }),
+    const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
+
+    const [usersResult, totalCount] = await Promise.all([
+      db.select({
+        id: users.id,
+        fullName: users.fullName,
+        phone: users.phone,
+        email: users.email,
+        role: users.role,
+        isActive: users.isActive,
+        isVerified: users.isVerified,
+        createdAt: users.createdAt,
+        lastLoginAt: users.lastLoginAt,
+      }).from(users)
+        .where(whereClause)
+        .orderBy(desc(users.createdAt))
+        .limit(Number(limit))
+        .offset(skip),
+      
+      db.select({ count: users.id }).from(users).where(whereClause)
     ]);
 
+    const total = totalCount.length;
+
     return NextResponse.json({
-      users,
+      users: usersResult,
       pagination: {
         page: Number(page),
         limit: Number(limit),
@@ -101,7 +107,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { fullName, phone, email, password, role = UserRole.STUDENT } = await request.json();
+    const { fullName, phone, email, password, role = 'STUDENT' as UserRole } = await request.json();
 
     // Валидация
     if (!fullName || !password) {
@@ -140,16 +146,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Проверка на существование пользователя
-    const existingUser = await db.user.findFirst({
-      where: {
-        OR: [
-          phone ? { phone: phone.replace(/\D/g, '') } : undefined,
-          email ? { email } : undefined,
-        ].filter(Boolean),
-      },
-    });
+    const conditions = [];
+    if (phone) conditions.push(eq(users.phone, phone.replace(/\D/g, '')));
+    if (email) conditions.push(eq(users.email, email));
 
-    if (existingUser) {
+    const existingUser = await db.select().from(users).where(or(...conditions)).limit(1);
+
+    if (existingUser.length > 0) {
       return NextResponse.json(
         { error: 'Пользователь с таким телефоном или email уже существует' },
         { status: 409 }
@@ -158,25 +161,24 @@ export async function POST(request: NextRequest) {
 
     // Создание пользователя
     const passwordHash = await hashPassword(password);
-    const user = await db.user.create({
-      data: {
-        fullName,
-        phone: phone ? phone.replace(/\D/g, '') : null,
-        email: email || null,
-        passwordHash,
-        role,
-      },
-      select: {
-        id: true,
-        fullName: true,
-        phone: true,
-        email: true,
-        role: true,
-        isActive: true,
-        isVerified: true,
-        createdAt: true,
-      },
+    const newUser = await db.insert(users).values({
+      fullName,
+      phone: phone ? phone.replace(/\D/g, '') : null,
+      email: email || null,
+      passwordHash,
+      role,
+    }).returning({
+      id: users.id,
+      fullName: users.fullName,
+      phone: users.phone,
+      email: users.email,
+      role: users.role,
+      isActive: users.isActive,
+      isVerified: users.isVerified,
+      createdAt: users.createdAt,
     });
+
+    const user = newUser[0];
 
     return NextResponse.json({
       message: 'Пользователь успешно создан',

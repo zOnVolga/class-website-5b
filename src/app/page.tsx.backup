@@ -51,7 +51,7 @@ interface Contact {
 function ClassWebsiteContent() {
   const [activeTab, setActiveTab] = useState('news');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [currentDate, setCurrentDate] = useState(new Date(2025, 5, 15));
+  const [currentDate, setCurrentDate] = useState(new Date(2025, 5, 15)); // 15 июня 2025
   const [calendarView, setCalendarView] = useState<'month' | 'week' | 'year'>('year');
   const [today, setToday] = useState(new Date(2025, 5, 15));
   const [phone, setPhone] = useState('');
@@ -63,7 +63,7 @@ function ClassWebsiteContent() {
     setToday(now);
   }, []);
 
-  // Mock data for messages
+  // Mock data
   const [messages, setMessages] = useState<{ [key: string]: Array<{ text: string; sent: boolean }> }>({
     teacher: [
       { text: 'Привет! Как дела?', sent: false },
@@ -73,7 +73,7 @@ function ClassWebsiteContent() {
       { text: 'Кто сделал домашку по математике?', sent: false },
       { text: 'Я уже сдала!', sent: true },
     ],
-  });
+  ]);
 
   // Helper function to get date string with day offset
   const getDateString = (baseDate: Date, day: number) => {
@@ -111,13 +111,13 @@ function ClassWebsiteContent() {
       id: 2,
       title: 'Олимпиада по математике',
       content: 'Поздравляем победителей школьной олимпиады! Иванов Иван занял 1 место, Петрова Мария - 2 место.',
-      date: formatDateForNews(new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)),
+      date: formatDateForNews(new Date(Date.now() - 5 * 24 * 60 * 60 * 1000)), // 5 дней назад
     },
     {
       id: 3,
       title: 'Экскурсия в музей',
       content: 'Список участников и сбор в 9:00 у школы. Не забудьте взять с собой бутерброды и воду!',
-      date: formatDateForNews(new Date(Date.now() - 10 * 24 * 60 * 60 * 1000)),
+      date: formatDateForNews(new Date(Date.now() - 10 * 24 * 60 * 60 * 1000)), // 10 дней назад
     },
   ];
 
@@ -155,7 +155,7 @@ function ClassWebsiteContent() {
       id: 2,
       title: 'Спортивные соревнования',
       description: 'Победители в эстафете',
-      date: formatDateForNews(new Date(Date.now() - 35 * 24 * 60 * 60 * 1000)),
+      date: formatDateForNews(new Date(Date.now() - 35 * 24 * 60 * 60 * 1000)), // месяц назад
     },
   ];
 
@@ -482,25 +482,39 @@ function ClassWebsiteContent() {
         <div className="grid grid-cols-8 gap-1">
           <div className="space-y-2">
             {['8:00', '10:00', '12:00', '14:00', '16:00', '18:00'].map(time => (
-              <div key={time} className="text-sm text-muted-foreground p-2">{time}</div>
+              <div key={time} className="p-2 text-sm text-muted-foreground text-center border rounded">
+                {time}
+              </div>
             ))}
           </div>
+          
           {Array.from({ length: 7 }).map((_, dayIndex) => {
             const date = new Date(weekStart);
             date.setDate(weekStart.getDate() + dayIndex);
             const dayEvents = getEventsForDate(date);
             
             return (
-              <div key={dayIndex} className="space-y-1">
-                {Array.from({ length: 6 }).map((_, timeIndex) => (
-                  <div key={timeIndex} className="min-h-[60px] border rounded p-1">
-                    {dayEvents.length > 0 && timeIndex === 2 && (
-                      <Badge className={`text-xs ${getEventColor(dayEvents[0].type)} text-white`}>
-                        {dayEvents[0].title}
-                      </Badge>
-                    )}
-                  </div>
-                ))}
+              <div key={dayIndex} className="space-y-2">
+                {Array.from({ length: 6 }).map((_, timeIndex) => {
+                  const timeSlotEvents = dayEvents.filter((_, i) => i === timeIndex % dayEvents.length);
+                  
+                  return (
+                    <div
+                      key={timeIndex}
+                      className="min-h-[60px] p-2 border rounded hover:bg-muted/50 transition-colors"
+                    >
+                      {timeSlotEvents.map((event, eventIndex) => (
+                        <Badge
+                          key={eventIndex}
+                          variant="secondary"
+                          className={`text-xs w-full justify-start mb-1 ${getEventColor(event.type)} text-white`}
+                        >
+                          {event.title}
+                        </Badge>
+                      ))}
+                    </div>
+                  );
+                })}
               </div>
             );
           })}
@@ -511,11 +525,14 @@ function ClassWebsiteContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      {/* Header */}
       <header className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white sticky top-0 z-50 shadow-lg">
         <div className="container mx-auto px-4 py-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-indigo-600 font-bold text-xl">5Б</div>
+              <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-indigo-600 font-bold text-xl">
+                5Б
+              </div>
               <h1 className="text-xl sm:text-2xl font-bold">Классный сайт 5 "Б"</h1>
             </div>
             <div className="flex items-center gap-3">
@@ -523,16 +540,39 @@ function ClassWebsiteContent() {
                 <div className="text-sm">Загрузка...</div>
               ) : user ? (
                 <>
-                  <div className="text-sm">
+                  <div className="text-sm hidden sm:block">
                     <div className="font-medium">{user.fullName}</div>
-                    <div className="text-xs opacity-75">{user.role}</div>
+                    <div className="text-indigo-200 text-xs">{user.role}</div>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={logout}>
-                    <LogOut className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-2">
+                    {hasPermission(user.role, 'TEACHER') && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                        onClick={() => setActiveTab('admin')}
+                      >
+                        <Settings className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                      onClick={logout}
+                    >
+                      <LogOut className="h-4 w-4 mr-1" />
+                      Выход
+                    </Button>
+                  </div>
                 </>
               ) : (
-                <Button onClick={() => setIsAuthModalOpen(true)}>
+                <Button
+                  variant="secondary"
+                  className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                  onClick={() => setIsAuthModalOpen(true)}
+                >
+                  <User className="mr-2 h-4 w-4" />
                   Войти
                 </Button>
               )}
@@ -541,87 +581,40 @@ function ClassWebsiteContent() {
         </div>
       </header>
 
+      {/* Navigation */}
       <nav className="bg-white shadow-sm sticky top-16 z-40">
         <div className="container mx-auto px-4">
           <div className="flex overflow-x-auto py-2 gap-1 scrollbar-hide">
-            <Button
-              variant={activeTab === 'news' ? 'default' : 'ghost'}
-              onClick={() => setActiveTab('news')}
-              className="flex-shrink-0 flex flex-col items-center gap-1 h-auto py-2 px-3"
-            >
-              <CalendarIcon className="h-4 w-4" />
-              <span className="text-xs">Новости</span>
-            </Button>
-            <Button
-              variant={activeTab === 'calendar' ? 'default' : 'ghost'}
-              onClick={() => setActiveTab('calendar')}
-              className="flex-shrink-0 flex flex-col items-center gap-1 h-auto py-2 px-3"
-            >
-              <CalendarIcon className="h-4 w-4" />
-              <span className="text-xs">Календарь</span>
-            </Button>
-            <Button
-              variant={activeTab === 'class' ? 'default' : 'ghost'}
-              onClick={() => setActiveTab('class')}
-              className="flex-shrink-0 flex flex-col items-center gap-1 h-auto py-2 px-3"
-            >
-              <Users className="h-4 w-4" />
-              <span className="text-xs">Мой класс</span>
-            </Button>
-            <Button
-              variant={activeTab === 'chat' ? 'default' : 'ghost'}
-              onClick={() => setActiveTab('chat')}
-              className="flex-shrink-0 flex flex-col items-center gap-1 h-auto py-2 px-3"
-            >
-              <MessageSquare className="h-4 w-4" />
-              <span className="text-xs">Чаты</span>
-            </Button>
-            <Button
-              variant={activeTab === 'knowledge' ? 'default' : 'ghost'}
-              onClick={() => setActiveTab('knowledge')}
-              className="flex-shrink-0 flex flex-col items-center gap-1 h-auto py-2 px-3"
-            >
-              <BookOpen className="h-4 w-4" />
-              <span className="text-xs">База знаний</span>
-            </Button>
-            <Button
-              variant={activeTab === 'files' ? 'default' : 'ghost'}
-              onClick={() => setActiveTab('files')}
-              className="flex-shrink-0 flex flex-col items-center gap-1 h-auto py-2 px-3"
-            >
-              <FileText className="h-4 w-4" />
-              <span className="text-xs">Файлы</span>
-            </Button>
-            <Button
-              variant={activeTab === 'gallery' ? 'default' : 'ghost'}
-              onClick={() => setActiveTab('gallery')}
-              className="flex-shrink-0 flex flex-col items-center gap-1 h-auto py-2 px-3"
-            >
-              <Images className="h-4 w-4" />
-              <span className="text-xs">Галерея</span>
-            </Button>
-            <Button
-              variant={activeTab === 'diary' ? 'default' : 'ghost'}
-              onClick={() => setActiveTab('diary')}
-              className="flex-shrink-0 flex flex-col items-center gap-1 h-auto py-2 px-3"
-            >
-              <Book className="h-4 w-4" />
-              <span className="text-xs">Дневник</span>
-            </Button>
-            <Button
-              variant={activeTab === 'achievements' ? 'default' : 'ghost'}
-              onClick={() => setActiveTab('achievements')}
-              className="flex-shrink-0 flex flex-col items-center gap-1 h-auto py-2 px-3"
-            >
-              <Trophy className="h-4 w-4" />
-              <span className="text-xs">Достижения</span>
-            </Button>
+            {[
+            { id: 'news', label: 'Новости', icon: CalendarIcon },
+            { id: 'calendar', label: 'Календарь', icon: CalendarIcon },
+            { id: 'myclass', label: 'Мой класс', icon: Users },
+            { id: 'chats', label: 'Чаты', icon: MessageSquare },
+            { id: 'knowledge', label: 'База знаний', icon: BookOpen },
+            { id: 'files', label: 'Файлы', icon: FileText },
+            { id: 'gallery', label: 'Галерея', icon: Images },
+            { id: 'diary', label: 'Дневник', icon: Book },
+            { id: 'achievements', label: 'Достижения', icon: Trophy },
+            ...(user && hasPermission(user.role, 'TEACHER') ? [{ id: 'admin', label: 'Админ', icon: Settings }] : []),
+          ].map((item) => (
+              <Button
+                key={item.id}
+                variant={activeTab === item.id ? 'default' : 'ghost'}
+                className="flex-shrink-0 flex flex-col items-center gap-1 h-auto py-2 px-3"
+                onClick={() => setActiveTab(item.id)}
+              >
+                <item.icon className="h-4 w-4" />
+                <span className="text-xs">{item.label}</span>
+              </Button>
+            ))}
           </div>
         </div>
       </nav>
 
+      {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} className="w-full">
+          {/* News Tab */}
           <TabsContent value="news" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-4">
@@ -630,16 +623,16 @@ function ClassWebsiteContent() {
                   Новости и события
                 </h2>
                 <div className="space-y-4">
-                  {newsItems.map((item) => (
-                    <Card key={item.id} className="hover:shadow-lg transition-shadow">
+                  {newsItems.map((news) => (
+                    <Card key={news.id} className="hover:shadow-lg transition-shadow">
                       <CardHeader>
                         <div className="flex justify-between items-start">
-                          <CardTitle>{item.title}</CardTitle>
-                          <Badge variant="secondary">{item.date}</Badge>
+                          <CardTitle className="text-lg">{news.title}</CardTitle>
+                          <Badge variant="secondary">{news.date}</Badge>
                         </div>
                       </CardHeader>
                       <CardContent>
-                        <p className="text-muted-foreground">{item.content}</p>
+                        <p className="text-muted-foreground">{news.content}</p>
                       </CardContent>
                     </Card>
                   ))}
@@ -651,68 +644,140 @@ function ClassWebsiteContent() {
             </div>
           </TabsContent>
 
+          {/* Calendar Tab */}
           <TabsContent value="calendar" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">Календарь событий</h2>
-              <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <h2 className="text-2xl font-bold flex items-center gap-2">
+                <CalendarIcon className="h-6 w-6 text-indigo-600" />
+                Календарь событий
+              </h2>
+              <div className="flex items-center gap-2">
                 <Button
-                  variant={calendarView === 'year' ? 'default' : 'outline'}
+                  variant="outline"
                   size="sm"
-                  onClick={() => setCalendarView('year')}
+                  onClick={() => {
+                    if (calendarView === 'year') {
+                      setCurrentDate(new Date(currentDate.getFullYear() - 1, 0, 1));
+                    } else if (calendarView === 'month') {
+                      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+                    } else {
+                      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() - 7));
+                    }
+                  }}
                 >
-                  Год
+                  <ChevronLeft className="h-4 w-4" />
                 </Button>
+                <div className="flex gap-1">
+                  {(['month', 'week', 'year'] as const).map((view) => (
+                    <Button
+                      key={view}
+                      variant={calendarView === view ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setCalendarView(view)}
+                    >
+                      {view === 'month' ? 'Месяц' : view === 'week' ? 'Неделя' : 'Год'}
+                    </Button>
+                  ))}
+                </div>
                 <Button
-                  variant={calendarView === 'month' ? 'default' : 'outline'}
+                  variant="outline"
                   size="sm"
-                  onClick={() => setCalendarView('month')}
+                  onClick={() => {
+                    if (calendarView === 'year') {
+                      setCurrentDate(new Date(currentDate.getFullYear() + 1, 0, 1));
+                    } else if (calendarView === 'month') {
+                      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+                    } else {
+                      setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + 7));
+                    }
+                  }}
                 >
-                  Месяц
-                </Button>
-                <Button
-                  variant={calendarView === 'week' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setCalendarView('week')}
-                >
-                  Неделя
+                  <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
             </div>
             {renderFullCalendar()}
           </TabsContent>
 
-          <TabsContent value="class" className="space-y-6">
+          {/* My Class Tab */}
+          <TabsContent value="myclass" className="space-y-6">
             <h2 className="text-2xl font-bold flex items-center gap-2">
               <Users className="h-6 w-6 text-indigo-600" />
               Мой класс
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {contacts.map((contact) => (
-                <Card key={contact.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
-                        {contact.fullName.split(' ').map(n => n[0]).join('')}
+                <Card key={contact.id} className="hover:shadow-lg transition-all duration-300 overflow-hidden group">
+                  <div className="aspect-square bg-gradient-to-br from-indigo-100 to-purple-100 relative overflow-hidden">
+                    {contact.photo ? (
+                      <img 
+                        src={contact.photo} 
+                        alt={contact.fullName}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-lg">
+                          <User className="h-12 w-12 text-indigo-600" />
+                        </div>
                       </div>
+                    )}
+                    <div className="absolute top-2 right-2">
+                      <Badge 
+                        variant={contact.type === 'teacher' ? 'default' : 'secondary'}
+                        className={contact.type === 'teacher' ? 'bg-indigo-600' : ''}
+                      >
+                        {contact.type === 'teacher' ? 'Учитель' : 'Ученик'}
+                      </Badge>
+                    </div>
+                  </div>
+                  <CardContent className="p-4">
+                    <div className="space-y-3">
                       <div>
-                        <CardTitle className="text-lg">{contact.fullName}</CardTitle>
+                        <h3 className="font-semibold text-lg text-gray-900 group-hover:text-indigo-600 transition-colors">
+                          {contact.fullName}
+                        </h3>
                         {contact.role && (
-                          <Badge variant="secondary" className="text-xs">
-                            {contact.role}
-                          </Badge>
+                          <p className="text-sm text-indigo-600 font-medium">{contact.role}</p>
                         )}
                       </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-4 w-4 text-muted-foreground" />
-                        <span>{contact.phone}</span>
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm">
+                          <CalendarIcon className="h-4 w-4 text-gray-500" />
+                          <span className="text-gray-600">ДР: {contact.birthDate}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <Phone className="h-4 w-4 text-gray-500" />
+                          <a 
+                            href={`tel:${contact.phone.replace(/\D/g, '')}`}
+                            className="text-indigo-600 hover:text-indigo-800 transition-colors font-medium"
+                          >
+                            {contact.phone}
+                          </a>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                        <span>{contact.birthDate}</span>
+                      
+                      <div className="flex gap-2 pt-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="flex-1"
+                          onClick={() => {
+                            navigator.clipboard.writeText(contact.phone);
+                          }}
+                        >
+                          Копировать
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+                          onClick={() => {
+                            window.location.href = `tel:${contact.phone.replace(/\D/g, '')}`;
+                          }}
+                        >
+                          Позвонить
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -721,57 +786,55 @@ function ClassWebsiteContent() {
             </div>
           </TabsContent>
 
-          <TabsContent value="chat" className="space-y-6">
+          {/* Chats Tab */}
+          <TabsContent value="chats" className="space-y-6">
             <h2 className="text-2xl font-bold flex items-center gap-2">
               <MessageSquare className="h-6 w-6 text-indigo-600" />
               Чаты
             </h2>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {Object.entries({
-                teacher: 'Учитель',
-                students: 'Ученики'
-              }).map(([key, title]) => (
-                <Card key={key}>
-                  <CardHeader>
-                    <CardTitle>{title}</CardTitle>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {[
+                { id: 'teacher', title: 'Групповой чат с учителем', icon: '👨‍🏫' },
+                { id: 'students', title: 'Чат для учеников', icon: '👥' },
+              ].map((chat) => (
+                <Card key={chat.id} className="h-[500px] flex flex-col">
+                  <CardHeader className="bg-indigo-600 text-white">
+                    <CardTitle className="flex items-center gap-2">
+                      <span>{chat.icon}</span>
+                      {chat.title}
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="h-64 overflow-y-auto space-y-2 border rounded p-3">
-                        {messages[key]?.map((msg, index) => (
-                          <div
-                            key={index}
-                            className={`flex ${msg.sent ? 'justify-end' : 'justify-start'}`}
-                          >
-                            <div
-                              className={`max-w-xs px-3 py-2 rounded-lg ${
-                                msg.sent
-                                  ? 'bg-indigo-600 text-white'
-                                  : 'bg-muted text-muted-foreground'
-                              }`}
-                            >
-                              {msg.text}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                  <CardContent className="flex-1 flex flex-col p-0">
+                    <div className="flex-1 p-4 overflow-y-auto space-y-2 bg-muted/50">
+                      {messages[chat.id]?.map((message, index) => (
+                        <div
+                          key={index}
+                          className={`max-w-[80%] p-3 rounded-2xl ${
+                            message.sent
+                              ? 'ml-auto bg-indigo-100 text-indigo-900 rounded-br-sm'
+                              : 'mr-auto bg-white text-gray-900 rounded-bl-sm'
+                          }`}
+                        >
+                          {message.text}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="p-4 border-t bg-white">
                       <div className="flex gap-2">
                         <Input
-                          placeholder="Введите сообщение..."
+                          placeholder="Напишите сообщение..."
                           onKeyPress={(e) => {
                             if (e.key === 'Enter') {
-                              sendMessage(key, (e.target as HTMLInputElement).value);
+                              sendMessage(chat.id, (e.target as HTMLInputElement).value);
                               (e.target as HTMLInputElement).value = '';
                             }
                           }}
                         />
                         <Button
-                          onClick={() => {
-                            const input = document.querySelector(`input[placeholder="Введите сообщение..."]`) as HTMLInputElement;
-                            if (input) {
-                              sendMessage(key, input.value);
-                              input.value = '';
-                            }
+                          onClick={(e) => {
+                            const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                            sendMessage(chat.id, input.value);
+                            input.value = '';
                           }}
                         >
                           Отправить
@@ -784,113 +847,120 @@ function ClassWebsiteContent() {
             </div>
           </TabsContent>
 
+          {/* Knowledge Tab */}
           <TabsContent value="knowledge" className="space-y-6">
             <h2 className="text-2xl font-bold flex items-center gap-2">
               <BookOpen className="h-6 w-6 text-indigo-600" />
               База знаний
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {knowledgeItems.map((item) => (
                 <Card key={item.id} className="hover:shadow-lg transition-shadow cursor-pointer">
                   <CardContent className="p-6 text-center">
-                    <item.icon className="h-12 w-12 mx-auto mb-4 text-indigo-600" />
+                    <item.icon className="h-12 w-12 text-indigo-600 mx-auto mb-4" />
                     <h3 className="font-semibold mb-2">{item.title}</h3>
-                    <Badge variant="secondary">{item.count} материалов</Badge>
+                    <p className="text-sm text-muted-foreground mb-4">{item.count} учебных материалов</p>
+                    <Button variant="outline" size="sm">
+                      Посмотреть материалы
+                    </Button>
                   </CardContent>
                 </Card>
               ))}
             </div>
           </TabsContent>
 
+          {/* Files Tab */}
           <TabsContent value="files" className="space-y-6">
             <h2 className="text-2xl font-bold flex items-center gap-2">
               <FileText className="h-6 w-6 text-indigo-600" />
-              Файлы
+              Файловое хранилище
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {fileItems.map((file) => (
                 <Card key={file.id} className="hover:shadow-lg transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-                        <FileText className="h-5 w-5 text-indigo-600" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="font-medium">{file.name}</h3>
-                        <p className="text-sm text-muted-foreground">{file.size}</p>
-                      </div>
-                      <Button variant="ghost" size="sm">
-                        Скачать
-                      </Button>
+                  <CardContent className="p-6 text-center">
+                    <div className="h-12 w-12 bg-indigo-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+                      <span className="text-indigo-600 font-bold text-xs">{file.type.toUpperCase()}</span>
                     </div>
+                    <h3 className="font-semibold mb-2 text-sm">{file.name}</h3>
+                    <p className="text-sm text-muted-foreground mb-4">{file.size}</p>
+                    <Button variant="outline" size="sm">
+                      Скачать файл
+                    </Button>
                   </CardContent>
                 </Card>
               ))}
             </div>
           </TabsContent>
 
+          {/* Gallery Tab */}
           <TabsContent value="gallery" className="space-y-6">
             <h2 className="text-2xl font-bold flex items-center gap-2">
               <Images className="h-6 w-6 text-indigo-600" />
               Галерея
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {galleryItems.map((item, index) => (
-                <Card key={index} className="hover:shadow-lg transition-shadow overflow-hidden">
-                  <div className="h-48 bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
-                    <Images className="h-16 w-16 text-white" />
+                <Card key={index} className="overflow-hidden hover:shadow-lg transition-shadow">
+                  <div className="aspect-video bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold">
+                    {item}
                   </div>
-                  <CardContent className="p-4">
-                    <h3 className="font-semibold text-center">{item}</h3>
-                  </CardContent>
                 </Card>
               ))}
             </div>
           </TabsContent>
 
+          {/* Diary Tab */}
           <TabsContent value="diary" className="space-y-6">
             <h2 className="text-2xl font-bold flex items-center gap-2">
               <Book className="h-6 w-6 text-indigo-600" />
-              Дневник
+              Электронный дневник
             </h2>
-            <Card>
-              <CardContent className="p-6">
-                <div className="text-center text-muted-foreground">
-                  <Book className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                  <p>Дневник находится в разработке</p>
-                </div>
-              </CardContent>
+            <Card className="text-center p-8">
+              <div className="h-16 w-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Book className="h-8 w-8 text-amber-600" />
+              </div>
+              <h3 className="text-xl font-semibold mb-4">Интеграция с SGO</h3>
+              <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
+                В ближайшее время будет реализована интеграция с электронным дневником sgo.volganet.ru 
+                для автоматической синхронизации расписания, оценок и домашних заданий.
+              </p>
+              <Button asChild className="bg-amber-600 hover:bg-amber-700">
+                <a href="https://sgo.volganet.ru" target="_blank" rel="noopener noreferrer">
+                  Перейти в SGO
+                </a>
+              </Button>
             </Card>
           </TabsContent>
 
+          {/* Achievements Tab */}
           <TabsContent value="achievements" className="space-y-6">
             <h2 className="text-2xl font-bold flex items-center gap-2">
               <Trophy className="h-6 w-6 text-indigo-600" />
-              Достижения
+              Достижения класса
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {achievements.map((achievement) => (
                 <Card key={achievement.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-yellow-500 to-orange-500 rounded-full flex items-center justify-center">
+                  <CardContent className="p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="h-12 w-12 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center">
                         <Trophy className="h-6 w-6 text-white" />
                       </div>
-                      <div>
-                        <CardTitle>{achievement.title}</CardTitle>
-                        <p className="text-sm text-muted-foreground">{achievement.date}</p>
+                      <div className="flex-1">
+                        <h3 className="font-semibold mb-2">{achievement.title}</h3>
+                        <p className="text-muted-foreground mb-2">{achievement.description}</p>
+                        <Badge variant="secondary">{achievement.date}</Badge>
                       </div>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground">{achievement.description}</p>
                   </CardContent>
                 </Card>
               ))}
             </div>
           </TabsContent>
 
-          {user && hasPermission('ADMIN') && (
+          {/* Admin Tab - только для учителей и администраторов */}
+          {user && hasPermission(user.role, 'TEACHER') && (
             <TabsContent value="admin" className="space-y-6">
               <UserManagement />
             </TabsContent>

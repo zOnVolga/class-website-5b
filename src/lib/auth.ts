@@ -1,9 +1,10 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
+import { config } from 'dotenv';
 
 // Загрузка переменных окружения
-require('dotenv').config();
+config();
 
 export async function hashPassword(password: string): Promise<string> {
   const saltRounds = 12;

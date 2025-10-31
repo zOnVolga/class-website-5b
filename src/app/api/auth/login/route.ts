@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { users, loginAttempts, sessions } from '@/lib/db/schema';
 import { verifyPassword, sanitizePhone, generateSecureToken } from '@/lib/auth';
 import jwt from 'jsonwebtoken';
+import { eq, or, and } from 'drizzle-orm';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -17,18 +19,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Определяем, что введено - телефон или email
-    const isPhone = login.includes('@') ? false : true;
+    const isPhone = !login.includes('@');
     
     // Ищем пользователя
-    const user = await db.user.findFirst({
-      where: {
-        OR: [
-          isPhone ? { phone: sanitizePhone(login) } : undefined,
-          !isPhone ? { email: login.toLowerCase() } : undefined,
-        ].filter(Boolean),
-        isActive: true,
-      },
-    });
+    const conditions = [
+      isPhone ? eq(users.phone, sanitizePhone(login)) : undefined,
+      !isPhone ? eq(users.email, login.toLowerCase()) : undefined,
+    ].filter(Boolean);
+
+    const userResult = await db.select().from(users).where(and(or(...conditions), eq(users.isActive, true))).limit(1);
+    const user = userResult[0];
 
     if (!user) {
       // Записываем неудачную попытку входа
@@ -55,10 +55,7 @@ export async function POST(request: NextRequest) {
     await logLoginAttempt(user.id, request, true);
 
     // Обновляем время последнего входа
-    await db.user.update({
-      where: { id: user.id },
-      data: { lastLoginAt: new Date() },
-    });
+    await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
 
     // Создаем JWT токен
     const token = jwt.sign(
@@ -76,12 +73,10 @@ export async function POST(request: NextRequest) {
     const refreshTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 дней
 
     // Сохраняем refresh token в базу
-    await db.session.create({
-      data: {
-        userId: user.id,
-        refreshToken,
-        expiresAt: refreshTokenExpiry,
-      },
+    await db.insert(sessions).values({
+      userId: user.id,
+      refreshToken,
+      expiresAt: refreshTokenExpiry,
     });
 
     // Создаем ответ с куками
@@ -131,13 +126,11 @@ async function logLoginAttempt(userId: string | null, request: NextRequest, succ
     const userAgent = request.headers.get('user-agent') || 'unknown';
 
     if (userId) {
-      await db.loginAttempt.create({
-        data: {
-          userId,
-          ipAddress,
-          userAgent,
-          success,
-        },
+      await db.insert(loginAttempts).values({
+        userId,
+        ipAddress,
+        userAgent,
+        success,
       });
     }
   } catch (error) {

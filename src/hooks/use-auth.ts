@@ -24,6 +24,7 @@ interface AuthContextType {
   updateProfile: (data: ProfileData) => Promise<{ success: boolean; error?: string }>;
   requestVerification: (phone: string) => Promise<{ success: boolean; error?: string; code?: string }>;
   verifyCode: (phone: string, code: string) => Promise<{ success: boolean; error?: string }>;
+  hasPermission: (requiredRole: string) => boolean;
 }
 
 interface RegisterData {
@@ -189,6 +190,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const hasPermission = (requiredRole: string): boolean => {
+    if (!user) return false;
+    
+    const roleHierarchy = {
+      ADMIN: 4,
+      TEACHER: 3,
+      PARENT: 2,
+      STUDENT: 1,
+    };
+
+    return (roleHierarchy[user.role as keyof typeof roleHierarchy] || 0) >= 
+           (roleHierarchy[requiredRole as keyof typeof roleHierarchy] || 0);
+  };
+
   const contextValue: AuthContextType = {
     user,
     loading,
@@ -198,6 +213,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     updateProfile,
     requestVerification,
     verifyCode,
+    hasPermission,
   };
 
   return React.createElement(
@@ -213,16 +229,4 @@ export function useAuth() {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}
-
-export function hasPermission(userRole: string, requiredRole: string): boolean {
-  const roleHierarchy = {
-    ADMIN: 4,
-    TEACHER: 3,
-    PARENT: 2,
-    STUDENT: 1,
-  };
-
-  return (roleHierarchy[userRole as keyof typeof roleHierarchy] || 0) >= 
-         (roleHierarchy[requiredRole as keyof typeof roleHierarchy] || 0);
 }
