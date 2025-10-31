@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { generateVerificationCode, sanitizePhone } from '@/lib/auth';
+import { sendVerificationSMS } from '@/lib/sms';
 import { VerificationType } from '@prisma/client';
-import ZAI from 'z-ai-web-dev-sdk';
 
 export async function POST(request: NextRequest) {
   try {
@@ -54,33 +54,20 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Отправляем СМС через Z.AI SDK
-    try {
-      const zai = await ZAI.create();
-      
-      // Формируем сообщение для СМС
-      const message = `Ваш код подтверждения для входа в классный сайт 5Б: ${code}. Код действителен 10 минут.`;
-      
-      // Здесь должна быть реальная отправка СМС
-      // Для демонстрации просто логируем
-      console.log(`SMS отправлен на ${sanitizedPhone}: ${message}`);
-      
-      // В реальном приложении здесь был бы вызов API для отправки СМС
-      // await zai.functions.invoke('send_sms', {
-      //   phone: sanitizedPhone,
-      //   message: message,
-      // });
-      
-    } catch (smsError) {
-      console.error('SMS sending error:', smsError);
+    // Отправляем СМС через наш SMS-сервис
+    const smsResult = await sendVerificationSMS(sanitizedPhone, code);
+    
+    if (!smsResult.success) {
+      console.error('SMS sending failed:', smsResult.error);
       // Не прерываем процесс, если СМС не отправилось
-      // Пользователь может ввести код вручную
+      // Пользователь может ввести код вручную (в демо режиме)
     }
 
     return NextResponse.json({
       message: 'Код подтверждения отправлен',
       // Для демонстрации возвращаем код (в продакшене так делать нельзя!)
       code: process.env.NODE_ENV === 'development' ? code : undefined,
+      smsResult: process.env.NODE_ENV === 'development' ? smsResult : undefined,
     });
   } catch (error) {
     console.error('Verification request error:', error);

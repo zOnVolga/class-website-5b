@@ -1,5 +1,9 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import jwt from 'jsonwebtoken';
+
+// Загрузка переменных окружения
+require('dotenv').config();
 
 export async function hashPassword(password: string): Promise<string> {
   const saltRounds = 12;
@@ -21,6 +25,30 @@ export function generateVerificationCode(length: number = 6): string {
 
 export function generateSecureToken(length: number = 32): string {
   return crypto.randomBytes(length).toString('hex');
+}
+
+export function generateJWTToken(payload: any): string {
+  return jwt.sign(payload, process.env.JWT_SECRET || 'fallback-secret', { expiresIn: '1h' });
+}
+
+export function generateRefreshToken(payload: any): string {
+  return jwt.sign(payload, process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret', { expiresIn: '7d' });
+}
+
+export function verifyJWTToken(token: string): any {
+  try {
+    return jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
+  } catch (error) {
+    return null;
+  }
+}
+
+export function verifyRefreshToken(token: string): any {
+  try {
+    return jwt.verify(token, process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret');
+  } catch (error) {
+    return null;
+  }
 }
 
 export function sanitizePhone(phone: string): string {
