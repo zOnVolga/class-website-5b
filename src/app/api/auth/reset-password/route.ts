@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db, users, verificationCodes } from '@/lib/db';
-import { generateVerificationCode, sanitizePhone } from '@/lib/auth';
+import { generateVerificationCode, sanitizePhone, hashPassword, isPasswordStrong } from '@/lib/auth';
 import { sendVerificationSMS } from '@/lib/sms';
 import { eq, and, gt, isNull } from 'drizzle-orm';
 import type { VerificationType } from '@/lib/db/schema';
 
 export async function POST(request: NextRequest) {
   try {
-    const { phone, type = 'PHONE_VERIFICATION' as VerificationType } = await request.json();
+    const { phone } = await request.json();
 
     if (!phone) {
       return NextResponse.json(
@@ -35,15 +35,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Генерируем код верификации
+    // Генерируем код восстановления
     const code = generateVerificationCode(6);
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 минут
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 минут
 
-    // Удаляем старые коды этого типа
+    // Удаляем старые коды восстановления
     await db.delete(verificationCodes).where(
       and(
         eq(verificationCodes.userId, user.id),
-        eq(verificationCodes.type, type)
+        eq(verificationCodes.type, 'PASSWORD_RESET' as VerificationType)
       )
     );
 
@@ -51,27 +51,32 @@ export async function POST(request: NextRequest) {
     await db.insert(verificationCodes).values({
       userId: user.id,
       code,
-      type,
+      type: 'PASSWORD_RESET' as VerificationType,
       expiresAt,
     });
 
-    // Отправляем СМС через наш SMS-сервис
+    // Отправляем СМС с кодом восстановления
     const smsResult = await sendVerificationSMS(sanitizedPhone, code);
     
     if (!smsResult.success) {
       console.error('SMS sending failed:', smsResult.error);
-      // Не прерываем процесс, если СМС не отправилось
-      // Пользователь может ввести код вручную (в демо режиме)
+      // В режиме разработки возвращаем код для тестирования
+      if (process.env.NODE_ENV === 'development') {
+        return NextResponse.json({
+          message: 'Код восстановления отправлен (режим разработки)',
+          code,
+          smsResult,
+        });
+      }
     }
 
     return NextResponse.json({
-      message: 'Код подтверждения отправлен',
-      // Для демонстрации возвращаем код (в продакшене так делать нельзя!)
+      message: 'Код восстановления отправлен на ваш телефон',
+      // В режиме разработки возвращаем код для тестирования
       code: process.env.NODE_ENV === 'development' ? code : undefined,
-      smsResult: process.env.NODE_ENV === 'development' ? smsResult : undefined,
     });
   } catch (error) {
-    console.error('Verification request error:', error);
+    console.error('Password reset request error:', error);
     return NextResponse.json(
       { error: 'Внутренняя ошибка сервера' },
       { status: 500 }
@@ -81,16 +86,24 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const { phone, code, type = 'PHONE_VERIFICATION' as VerificationType } = await request.json();
+    const { phone, code, newPassword } = await request.json();
 
-    if (!phone || !code) {
+    if (!phone || !code || !newPassword) {
       return NextResponse.json(
-        { error: 'Телефон и код обязательны' },
+        { error: 'Телефон, код и новый пароль обязательны' },
         { status: 400 }
       );
     }
 
     const sanitizedPhone = sanitizePhone(phone);
+
+    // Проверяем сложность нового пароля
+    if (!isPasswordStrong(newPassword)) {
+      return NextResponse.json(
+        { error: 'Пароль должен содержать минимум 8 символов, включая заглавные и строчные буквы, и цифры' },
+        { status: 400 }
+      );
+    }
 
     // Ищем пользователя
     const userResult = await db.select().from(users).where(
@@ -109,12 +122,12 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Ищем код верификации
+    // Ищем код восстановления
     const verificationCodeResult = await db.select().from(verificationCodes).where(
       and(
         eq(verificationCodes.userId, user.id),
         eq(verificationCodes.code, code),
-        eq(verificationCodes.type, type),
+        eq(verificationCodes.type, 'PASSWORD_RESET' as VerificationType),
         isNull(verificationCodes.usedAt),
         gt(verificationCodes.expiresAt, new Date())
       )
@@ -124,24 +137,27 @@ export async function PUT(request: NextRequest) {
 
     if (!verificationCode) {
       return NextResponse.json(
-        { error: 'Неверный или просроченный код' },
+        { error: 'Неверный или просроченный код восстановления' },
         { status: 400 }
       );
     }
+
+    // Хешируем новый пароль
+    const passwordHash = await hashPassword(newPassword);
+
+    // Обновляем пароль пользователя
+    await db.update(users).set({ passwordHash }).where(eq(users.id, user.id));
 
     // Помечаем код как использованный
     await db.update(verificationCodes).set({ usedAt: new Date() }).where(
       eq(verificationCodes.id, verificationCode.id)
     );
 
-    // Обновляем статус верификации пользователя
-    await db.update(users).set({ isVerified: true }).where(eq(users.id, user.id));
-
     return NextResponse.json({
-      message: 'Телефон успешно подтвержден',
+      message: 'Пароль успешно изменен',
     });
   } catch (error) {
-    console.error('Verification error:', error);
+    console.error('Password reset error:', error);
     return NextResponse.json(
       { error: 'Внутренняя ошибка сервера' },
       { status: 500 }

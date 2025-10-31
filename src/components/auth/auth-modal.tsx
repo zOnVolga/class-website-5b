@@ -103,8 +103,18 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   };
 
   const handleRequestVerification = async () => {
-    if (!formData.phone) {
+    // Проверяем, есть ли телефон в поле login (для вкладки входа)
+    const phoneValue = formData.phone || formData.login;
+    
+    if (!phoneValue) {
       setError('Введите номер телефона');
+      return;
+    }
+
+    // Проверяем, что введен именно телефон (а не email)
+    const phoneRegex = /^[\d\s\-\+\(\)]+$/;
+    if (!phoneRegex.test(phoneValue.replace(/\s/g, ''))) {
+      setError('Введите номер телефона для запроса кода подтверждения');
       return;
     }
 
@@ -112,10 +122,10 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setError('');
 
     try {
-      const result = await requestVerification(formData.phone);
+      const result = await requestVerification(phoneValue);
       
       if (result.success) {
-        setVerificationPhone(formData.phone);
+        setVerificationPhone(phoneValue);
         setVerificationStep(true);
         setSuccess('Код подтверждения отправлен');
         
@@ -285,7 +295,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   variant="outline"
                   size="sm"
                   onClick={handleRequestVerification}
-                  disabled={loading || !formData.phone}
+                  disabled={loading || !(formData.phone || formData.login)}
                 >
                   <Phone className="h-4 w-4 mr-2" />
                   Запросить код подтверждения

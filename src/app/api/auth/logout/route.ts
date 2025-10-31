@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { db, sessions } from '@/lib/db';
+import { eq } from 'drizzle-orm';
 
 export async function POST(request: NextRequest) {
   try {
@@ -7,9 +8,7 @@ export async function POST(request: NextRequest) {
 
     if (refreshToken) {
       // Удаляем refresh token из базы данных
-      await db.session.deleteMany({
-        where: { refreshToken },
-      });
+      await db.delete(sessions).where(eq(sessions.refreshToken, refreshToken));
     }
 
     // Создаем ответ с очищенными куками

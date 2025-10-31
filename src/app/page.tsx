@@ -451,8 +451,24 @@ function ClassWebsiteContent() {
     const weekStart = new Date(year, month, day - currentDayOfWeek + 1);
     
     const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-    const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
-                       'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+    const monthNames = ['Января', 'Февраля', 'Марта', 'Апреля', 'Мая', 'Июня',
+                       'Июля', 'Августа', 'Сентября', 'Октября', 'Ноября', 'Декабря'];
+    
+    // Временные слоты с шагом в 2 часа
+    const timeSlots = ['8:00', '10:00', '12:00', '14:00', '16:00', '18:00'];
+    
+    // Функция для получения событий для конкретного временного слота
+    const getEventsForTimeSlot = (date: Date, timeSlotIndex: number) => {
+      const dayEvents = getEventsForDate(date);
+      // Для демо распределяем события по временным слотам
+      if (dayEvents.length === 0) return [];
+      
+      return dayEvents.filter((_, index) => {
+        // Распределяем события по слотам: первое событие в слот 1, второе в слот 3 и т.д.
+        const eventSlotIndex = Math.floor(index / 2);
+        return eventSlotIndex === timeSlotIndex;
+      });
+    };
     
     return (
       <div className="space-y-4">
@@ -481,26 +497,38 @@ function ClassWebsiteContent() {
         
         <div className="grid grid-cols-8 gap-1">
           <div className="space-y-2">
-            {['8:00', '10:00', '12:00', '14:00', '16:00', '18:00'].map(time => (
-              <div key={time} className="text-sm text-muted-foreground p-2">{time}</div>
+            {timeSlots.map(time => (
+              <div key={time} className="text-sm text-muted-foreground p-2 text-right border-r pr-3">
+                {time}
+              </div>
             ))}
           </div>
           {Array.from({ length: 7 }).map((_, dayIndex) => {
             const date = new Date(weekStart);
             date.setDate(weekStart.getDate() + dayIndex);
-            const dayEvents = getEventsForDate(date);
             
             return (
               <div key={dayIndex} className="space-y-1">
-                {Array.from({ length: 6 }).map((_, timeIndex) => (
-                  <div key={timeIndex} className="min-h-[60px] border rounded p-1">
-                    {dayEvents.length > 0 && timeIndex === 2 && (
-                      <Badge className={`text-xs ${getEventColor(dayEvents[0].type)} text-white`}>
-                        {dayEvents[0].title}
-                      </Badge>
-                    )}
-                  </div>
-                ))}
+                {timeSlots.map((_, timeIndex) => {
+                  const slotEvents = getEventsForTimeSlot(date, timeIndex);
+                  
+                  return (
+                    <div key={timeIndex} className="min-h-[60px] border rounded p-1 relative overflow-hidden">
+                      {slotEvents.map((event, eventIndex) => (
+                        <div
+                          key={eventIndex}
+                          className={`
+                            text-xs p-1 rounded mb-1 truncate block
+                            ${getEventColor(event.type)} text-white
+                          `}
+                          title={event.title}
+                        >
+                          {event.title}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
               </div>
             );
           })}
