@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, MessageSquare, BookOpen, FileText, Images, Book, Trophy, User, ChevronLeft, ChevronRight, Phone, Mail, Calculator, Users } from 'lucide-react';
+import { CalendarIcon, MessageSquare, BookOpen, FileText, Images, Book, Trophy, User, ChevronLeft, ChevronRight, Phone, Mail, Calculator, Users, Settings, LogOut } from 'lucide-react';
+import { AuthModal } from '@/components/auth/auth-modal';
+import { UserManagement } from '@/components/admin/user-management';
+import { AuthProvider, useAuth } from '@/hooks/use-auth';
 
 interface Event {
   title: string;
@@ -47,12 +48,14 @@ interface Contact {
   role?: string;
 }
 
-export default function ClassWebsite() {
+function ClassWebsiteContent() {
   const [activeTab, setActiveTab] = useState('news');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authMethod, setAuthMethod] = useState<'phone' | 'email'>('phone');
-  const [phone, setPhone] = useState('+7 ');
-  const [email, setEmail] = useState('');
+  const [currentDate, setCurrentDate] = useState(new Date(2024, 0, 1));
+  const [calendarView, setCalendarView] = useState<'month' | 'week' | 'year'>('year');
+  const { user, login, register, logout, loading, hasPermission } = useAuth();
+
+  // Mock data
   const [messages, setMessages] = useState<{ [key: string]: Array<{ text: string; sent: boolean }> }>({
     teacher: [
       { text: 'Привет! Как дела?', sent: false },
@@ -63,8 +66,6 @@ export default function ClassWebsite() {
       { text: 'Я уже сдала!', sent: true },
     ],
   });
-  const [currentDate, setCurrentDate] = useState(new Date(2024, 0, 1));
-  const [calendarView, setCalendarView] = useState<'month' | 'week' | 'year'>('year');
 
   // Mock data
   const events: Event[] = [
@@ -517,14 +518,48 @@ export default function ClassWebsite() {
               </div>
               <h1 className="text-xl sm:text-2xl font-bold">Классный сайт 5 "Б"</h1>
             </div>
-            <Button
-              variant="secondary"
-              className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-              onClick={() => setIsAuthModalOpen(true)}
-            >
-              <User className="mr-2 h-4 w-4" />
-              Войти
-            </Button>
+            <div className="flex items-center gap-3">
+              {loading ? (
+                <div className="text-sm">Загрузка...</div>
+              ) : user ? (
+                <>
+                  <div className="text-sm hidden sm:block">
+                    <div className="font-medium">{user.fullName}</div>
+                    <div className="text-indigo-200 text-xs">{user.role}</div>
+                  </div>
+                  <div className="flex gap-2">
+                    {hasPermission(user.role, 'TEACHER') && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                        onClick={() => setActiveTab('admin')}
+                      >
+                        <Settings className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                      onClick={logout}
+                    >
+                      <LogOut className="h-4 w-4 mr-1" />
+                      Выход
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <Button
+                  variant="secondary"
+                  className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                  onClick={() => setIsAuthModalOpen(true)}
+                >
+                  <User className="mr-2 h-4 w-4" />
+                  Войти
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -534,16 +569,17 @@ export default function ClassWebsite() {
         <div className="container mx-auto px-4">
           <div className="flex overflow-x-auto py-2 gap-1 scrollbar-hide">
             {[
-              { id: 'news', label: 'Новости', icon: CalendarIcon },
-              { id: 'calendar', label: 'Календарь', icon: CalendarIcon },
-              { id: 'myclass', label: 'Мой класс', icon: Users },
-              { id: 'chats', label: 'Чаты', icon: MessageSquare },
-              { id: 'knowledge', label: 'База знаний', icon: BookOpen },
-              { id: 'files', label: 'Файлы', icon: FileText },
-              { id: 'gallery', label: 'Галерея', icon: Images },
-              { id: 'diary', label: 'Дневник', icon: Book },
-              { id: 'achievements', label: 'Достижения', icon: Trophy },
-            ].map((item) => (
+            { id: 'news', label: 'Новости', icon: CalendarIcon },
+            { id: 'calendar', label: 'Календарь', icon: CalendarIcon },
+            { id: 'myclass', label: 'Мой класс', icon: Users },
+            { id: 'chats', label: 'Чаты', icon: MessageSquare },
+            { id: 'knowledge', label: 'База знаний', icon: BookOpen },
+            { id: 'files', label: 'Файлы', icon: FileText },
+            { id: 'gallery', label: 'Галерея', icon: Images },
+            { id: 'diary', label: 'Дневник', icon: Book },
+            { id: 'achievements', label: 'Достижения', icon: Trophy },
+            ...(user && hasPermission(user.role, 'TEACHER') ? [{ id: 'admin', label: 'Админ', icon: Settings }] : []),
+          ].map((item) => (
               <Button
                 key={item.id}
                 variant={activeTab === item.id ? 'default' : 'ghost'}
@@ -905,56 +941,26 @@ export default function ClassWebsite() {
               ))}
             </div>
           </TabsContent>
+
+          {/* Admin Tab - только для учителей и администраторов */}
+          {user && hasPermission(user.role, 'TEACHER') && (
+            <TabsContent value="admin" className="space-y-6">
+              <UserManagement />
+            </TabsContent>
+          )}
         </Tabs>
       </main>
 
       {/* Auth Modal */}
-      <Dialog open={isAuthModalOpen} onOpenChange={setIsAuthModalOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Вход в систему</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="flex gap-2">
-              <Button
-                variant={authMethod === 'phone' ? 'default' : 'outline'}
-                className="flex-1"
-                onClick={() => setAuthMethod('phone')}
-              >
-                <Phone className="mr-2 h-4 w-4" />
-                Телефон
-              </Button>
-              <Button
-                variant={authMethod === 'email' ? 'default' : 'outline'}
-                className="flex-1"
-                onClick={() => setAuthMethod('email')}
-              >
-                <Mail className="mr-2 h-4 w-4" />
-                Email
-              </Button>
-            </div>
-            <div>
-              {authMethod === 'phone' ? (
-                <Input
-                  placeholder="+7 XXX XXX-XX-XX"
-                  value={phone}
-                  onChange={handlePhoneChange}
-                />
-              ) : (
-                <Input
-                  type="email"
-                  placeholder="example@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-              )}
-            </div>
-            <Button className="w-full">
-              Получить код
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
     </div>
+  );
+}
+
+export default function ClassWebsite() {
+  return (
+    <AuthProvider>
+      <ClassWebsiteContent />
+    </AuthProvider>
   );
 }
