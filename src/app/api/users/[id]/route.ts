@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { users, sessions, verificationCodes, loginAttempts } from '@/lib/db/schema';
 import { hashPassword, verifyPassword, validatePhone, validateEmail, isPasswordStrong } from '@/lib/auth';
-import { UserRole } from '@prisma/client';
+import { eq, and, ne } from 'drizzle-orm';
 import jwt from 'jsonwebtoken';
+import type { UserRole } from '@/lib/db/schema';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -41,20 +43,19 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       );
     }
 
-    const user = await db.user.findUnique({
-      where: { id: params.id },
-      select: {
-        id: true,
-        fullName: true,
-        phone: true,
-        email: true,
-        role: true,
-        isActive: true,
-        isVerified: true,
-        createdAt: true,
-        lastLoginAt: true,
-      },
-    });
+    const userResult = await db.select({
+      id: users.id,
+      fullName: users.fullName,
+      phone: users.phone,
+      email: users.email,
+      role: users.role,
+      isActive: users.isActive,
+      isVerified: users.isVerified,
+      createdAt: users.createdAt,
+      lastLoginAt: users.lastLoginAt,
+    }).from(users).where(eq(users.id, params.id)).limit(1);
+
+    const user = userResult[0];
 
     if (!user) {
       return NextResponse.json(
@@ -85,9 +86,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
     const { fullName, phone, email, password, role, isActive } = await request.json();
 
-    const existingUser = await db.user.findUnique({
-      where: { id: params.id },
-    });
+    const existingUserResult = await db.select().from(users).where(eq(users.id, params.id)).limit(1);
+    const existingUser = existingUserResult[0];
 
     if (!existingUser) {
       return NextResponse.json(
@@ -101,7 +101,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     // Обновление полей
     if (fullName !== undefined) updateData.fullName = fullName;
     if (isActive !== undefined) updateData.isActive = isActive;
-    if (role !== undefined && Object.values(UserRole).includes(role)) {
+    if (role !== undefined && ['ADMIN', 'TEACHER', 'STUDENT', 'PARENT'].includes(role)) {
       // Только админ может менять роль
       if (await hasPermission(auth.role, 'ADMIN')) {
         updateData.role = role;
@@ -118,14 +118,14 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       }
       
       if (phone) {
-        const existingPhoneUser = await db.user.findFirst({
-          where: {
-            phone: phone.replace(/\D/g, ''),
-            id: { not: params.id },
-          },
-        });
+        const existingPhoneUserResult = await db.select().from(users).where(
+          and(
+            eq(users.phone, phone.replace(/\D/g, '')),
+            ne(users.id, params.id)
+          )
+        ).limit(1);
         
-        if (existingPhoneUser) {
+        if (existingPhoneUserResult.length > 0) {
           return NextResponse.json(
             { error: 'Этот телефон уже используется другим пользователем' },
             { status: 409 }
@@ -147,14 +147,14 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       }
       
       if (email) {
-        const existingEmailUser = await db.user.findFirst({
-          where: {
-            email,
-            id: { not: params.id },
-          },
-        });
+        const existingEmailUserResult = await db.select().from(users).where(
+          and(
+            eq(users.email, email),
+            ne(users.id, params.id)
+          )
+        ).limit(1);
         
-        if (existingEmailUser) {
+        if (existingEmailUserResult.length > 0) {
           return NextResponse.json(
             { error: 'Этот email уже используется другим пользователем' },
             { status: 409 }
@@ -176,21 +176,19 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       updateData.passwordHash = await hashPassword(password);
     }
 
-    const updatedUser = await db.user.update({
-      where: { id: params.id },
-      data: updateData,
-      select: {
-        id: true,
-        fullName: true,
-        phone: true,
-        email: true,
-        role: true,
-        isActive: true,
-        isVerified: true,
-        createdAt: true,
-        lastLoginAt: true,
-      },
+    const updatedUserResult = await db.update(users).set(updateData).where(eq(users.id, params.id)).returning({
+      id: users.id,
+      fullName: users.fullName,
+      phone: users.phone,
+      email: users.email,
+      role: users.role,
+      isActive: users.isActive,
+      isVerified: users.isVerified,
+      createdAt: users.createdAt,
+      lastLoginAt: users.lastLoginAt,
     });
+
+    const updatedUser = updatedUserResult[0];
 
     return NextResponse.json({
       message: 'Пользователь успешно обновлен',
@@ -215,9 +213,8 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       );
     }
 
-    const user = await db.user.findUnique({
-      where: { id: params.id },
-    });
+    const userResult = await db.select().from(users).where(eq(users.id, params.id)).limit(1);
+    const user = userResult[0];
 
     if (!user) {
       return NextResponse.json(
@@ -235,22 +232,12 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
     }
 
     // Удаляем связанные данные
-    await db.session.deleteMany({
-      where: { userId: params.id },
-    });
-
-    await db.verificationCode.deleteMany({
-      where: { userId: params.id },
-    });
-
-    await db.loginAttempt.deleteMany({
-      where: { userId: params.id },
-    });
+    await db.delete(sessions).where(eq(sessions.userId, params.id));
+    await db.delete(verificationCodes).where(eq(verificationCodes.userId, params.id));
+    await db.delete(loginAttempts).where(eq(loginAttempts.userId, params.id));
 
     // Удаляем пользователя
-    await db.user.delete({
-      where: { id: params.id },
-    });
+    await db.delete(users).where(eq(users.id, params.id));
 
     return NextResponse.json({
       message: 'Пользователь успешно удален',

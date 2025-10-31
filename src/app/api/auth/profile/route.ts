@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db, users } from '@/lib/db';
+import { db } from '@/lib/db';
+import { users } from '@/lib/db/schema';
 import { hashPassword, verifyPassword, validatePhone, validateEmail, isPasswordStrong } from '@/lib/auth';
 import { eq, and, ne } from 'drizzle-orm';
 import jwt from 'jsonwebtoken';

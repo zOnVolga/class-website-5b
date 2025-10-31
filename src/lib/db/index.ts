@@ -14,4 +14,7 @@ sqlite.pragma('journal_mode = WAL');
 
 export const db = drizzle(sqlite, { schema });
 
+// Export all schema tables for easy import
+export const { users, pushSubscriptions, sessions, loginAttempts, verificationCodes } = schema;
+
 export { schema };

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db, users, verificationCodes } from '@/lib/db';
+import { db } from '@/lib/db';
+import { users, verificationCodes } from '@/lib/db/schema';
 import { generateVerificationCode, sanitizePhone } from '@/lib/auth';
 import { sendVerificationSMS } from '@/lib/sms';
 import { eq, and, gt, isNull } from 'drizzle-orm';
